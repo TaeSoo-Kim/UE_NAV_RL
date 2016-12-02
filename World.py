@@ -6,9 +6,32 @@ import cv2
 from math import cos,sin,radians
 import numpy as np
 
+## globals
+reward = 0
+game_over = 0
+
+def reward_listener(message):
+  global reward
+  # message should be : "Reward TYPE"
+  print 'Got server message %s' % repr(message)
+  reward_str, reward_type = message.split()
+  if reward_type == "COLLISION":
+    reward = -1
+  elif reward_type == "GAME_OVER":
+    game_over = 1
+    reward = 10
+  else: ## every step is -0.1,  try to find the shortest path
+    reward = -0.1
+
+  
+
 ## World object. This represents the state of the UnrealEngine game environment.
 class World(object):
   def __init__(self):
+    global reward, game_over
+    reward = 0
+    game_over = 0
+    client.message_handler = reward_listener
     client.connect()
     if not client.isconnected():
       print 'UnrealCV server is not running. Gaming running?'
@@ -26,7 +49,6 @@ class World(object):
     return img
 
   def act(self,action):
-    ## TODO: Write routine to move the actor
     # 0:go_front, 1:go_back, 2:turn_left, 3:turn_right
 
     ## Try to move -> collision check -> undo move
@@ -42,34 +64,34 @@ class World(object):
     return self.observe(), self._get_reward(), self._is_over()
 
   def reset(self):
-    ## TODO: Write routine to restart the game
-
     ## The game can reset itself once the trigger is set off.
     pass
 
   def _get_reward(self):
+    global reward
     ## TODO: design reward
     # +10: task_complete, -0.1: every step, -1: collision
-    if self._is_over():
-      return 10
-    elif self._in_collision():
-      return -1
-    else:
-      return -0.1
+    #if self._is_over():
+    #  return 10
+    #elif self._in_collision():
+    #  return -1
+    #else:
+    #  return -0.1
 
-    
-    return 0
+
+    ###################
+    # copy reward, set it back to 0, return the copy
+
+    return_reward_val = reward
+    reward = 0
+    return return_reward_val
+
+  
 
   def _is_over(self):
-    ## TODO: implement game over logic
-    ## If in view and close enough
+    global game_over
+    return game_over
 
-    ## Maybe listen to an event that is triggered by the trigger box in game.
-    return False
-
-  def _in_collision(self):
-    ## TODO: Listen to collision nevents
-    pass
 
   ## Actor Manipulation Methods
   def _move_forward(self,id=0):
@@ -94,17 +116,6 @@ class World(object):
     res = client.request('vset /camera/%d/location %f %f %f'%(id,new_pos[0],new_pos[1],new_pos[2]))
     return True
 
-  ## Camera Accessor Methods
-  def _get_camera_pos(self,id=0):
-    res = client.request('vget /camera/%d/location'%id)
-    x,y,z = res.split(' ')
-    return float(x), float(y), float(z)
-
-  def _get_camera_rotation(self,id=0):
-    res = client.request('vget /camera/%d/rotation'%id)
-    pitch,yaw,roll = res.split(' ')
-    return float(pitch), float(yaw), float(roll)
-
   def _rotate_right(self,id=0):
     step_size = 10
     cur_rot = self._get_camera_rotation(id)
@@ -117,6 +128,18 @@ class World(object):
     new_rot = (cur_rot[0],cur_rot[1]+step_size,cur_rot[2])
     res = client.request('vset /camera/%d/rotation %f %f %f'%(id,new_rot[0],new_rot[1],new_rot[2]))
 
+  ## Camera Accessor Methods
+  def _get_camera_pos(self,id=0):
+    res = client.request('vget /camera/%d/location'%id)
+    x,y,z = res.split(' ')
+    return float(x), float(y), float(z)
+
+  def _get_camera_rotation(self,id=0):
+    res = client.request('vget /camera/%d/rotation'%id)
+    pitch,yaw,roll = res.split(' ')
+    return float(pitch), float(yaw), float(roll)
+
+
   def _toRotationMatrix(self,pitch,yaw,roll):
     p = radians(pitch)
     y = radians(yaw)
@@ -127,3 +150,7 @@ class World(object):
     RzRy = np.dot(Rz,Ry)
     RzRyRx = np.dot(RzRy,Rx)
     return RzRyRx
+
+
+
+
