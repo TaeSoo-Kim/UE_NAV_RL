@@ -1,6 +1,7 @@
 import sys
 from unrealcv import client
 import numpy as np
+import pdb
 
 ## World object. This represents the state of the UnrealEngine game environment.
 class ExperienceReplay(object):
@@ -20,8 +21,9 @@ class ExperienceReplay(object):
     len_memory = len(self.memory)
     num_actions = model.output_shape[-1]
     env_dim = self.memory[0][0][0].shape
-    inputs = np.zeros((min(len_memory,batch_size),env_dim))
-    target = np.zeros((inputs.shape[0], num_actions))
+    #pdb.set_trace()
+    inputs = np.zeros((min(len_memory,batch_size),env_dim[1],env_dim[2],env_dim[3]))
+    targets = np.zeros((inputs.shape[0], num_actions))
 
     for i, idx in enumerate(np.random.randint(0, len_memory, size=inputs.shape[0])):
       state_t, action_t, reward_t, state_tp1 = self.memory[idx][0]

@@ -7,19 +7,22 @@ from math import cos,sin,radians
 import numpy as np
 
 ## globals
-reward = 0
+reward = -0.1 # default to -0.1 because every step counts as reward:-0.1
 game_over = 0
 
 def reward_listener(message):
   global reward
   # message should be : "Reward TYPE"
   print 'Got server message %s' % repr(message)
-  reward_str, reward_type = message.split()
-  if reward_type == "COLLISION":
+  
+  
+  if "COLLISION" in message:
     reward = -1
-  elif reward_type == "GAME_OVER":
+  elif "INSIGHT" in message:
+    reward = 2.0
+  elif "GAME_OVER" in message:
     game_over = 1
-    reward = 10
+    reward = 10.0
   else: ## every step is -0.1,  try to find the shortest path
     reward = -0.1
 
@@ -38,15 +41,16 @@ class World(object):
       sys.exit()
     ## System Status
     res = client.request('vget /unrealcv/status')
-    print res
+    print "Connection?? :",res
   
 
   def observe(self):
     ## get current frame
+    #UE4_root = '/home/tk/dev/ThirdParty/UE4.13/UnrealEngine/'
     img_out_path = '/home/tk/dev/unrealcv/src/temp_imgs/img.png'
     res = client.request('vget /camera/0/lit ' + img_out_path )
-    img = cv2.imread(img_out_path)
-    return img
+    img = cv2.resize(cv2.imread(img_out_path), (224,224))
+    return img.reshape((1,img.shape[0],img.shape[1],img.shape[2]))
 
   def act(self,action):
     # 0:go_front, 1:go_back, 2:turn_left, 3:turn_right
@@ -69,21 +73,11 @@ class World(object):
 
   def _get_reward(self):
     global reward
-    ## TODO: design reward
-    # +10: task_complete, -0.1: every step, -1: collision
-    #if self._is_over():
-    #  return 10
-    #elif self._in_collision():
-    #  return -1
-    #else:
-    #  return -0.1
-
-
     ###################
-    # copy reward, set it back to 0, return the copy
+    # copy reward, set it back to -0.1, return the copy
 
     return_reward_val = reward
-    reward = 0
+    reward = -0.1
     return return_reward_val
 
   
@@ -96,36 +90,43 @@ class World(object):
   ## Actor Manipulation Methods
   def _move_forward(self,id=0):
     ## This moves the camera forward by a fixed step size
-    step_size = 50
+    step_size = 75
 
     cur_pos = self._get_camera_pos(id)
     cur_rot = self._get_camera_rotation(id)
     R = self._toRotationMatrix(cur_rot[0],cur_rot[1],cur_rot[2])
-    new_pos = np.dot(R,np.transpose(np.array((step_size,0,0)))) + np.array(cur_pos)
+
+    noise = np.random.rand() ## random noise  0~1
+    new_pos = np.dot(R,np.transpose(np.array((step_size+noise,0,0)))) + np.array(cur_pos)
     res = client.request('vset /camera/%d/location %f %f %f'%(id,new_pos[0],new_pos[1],new_pos[2]))
     return True
 
   def _move_backward(self,id=0):
     ## This moves the camera forward by a fixed step size
-    step_size = -50
+    step_size = -75
 
     cur_pos = self._get_camera_pos(id)
     cur_rot = self._get_camera_rotation(id)
     R = self._toRotationMatrix(cur_rot[0],cur_rot[1],cur_rot[2])
-    new_pos = np.dot(R,np.transpose(np.array((step_size,0,0)))) + np.array(cur_pos)
+
+    noise = np.random.rand() ## random noise  0~1
+    new_pos = np.dot(R,np.transpose(np.array((step_size+noise,0,0)))) + np.array(cur_pos)
     res = client.request('vset /camera/%d/location %f %f %f'%(id,new_pos[0],new_pos[1],new_pos[2]))
     return True
 
   def _rotate_right(self,id=0):
-    step_size = 10
+    step_size = 45
     cur_rot = self._get_camera_rotation(id)
-    new_rot = (cur_rot[0],cur_rot[1]+step_size,cur_rot[2])
+
+    noise = np.random.rand()*2 - 1 ## random noise  -1~1 degrees
+    new_rot = (cur_rot[0],cur_rot[1]+step_size+noise,cur_rot[2])
     res = client.request('vset /camera/%d/rotation %f %f %f'%(id,new_rot[0],new_rot[1],new_rot[2]))
 
   def _rotate_left(self,id=0):
-    step_size = -10
+    step_size = -45
     cur_rot = self._get_camera_rotation(id)
-    new_rot = (cur_rot[0],cur_rot[1]+step_size,cur_rot[2])
+    noise = np.random.rand()*2 - 1 ## random noise  -1~1 degrees
+    new_rot = (cur_rot[0],cur_rot[1]+step_size+noise,cur_rot[2])
     res = client.request('vset /camera/%d/rotation %f %f %f'%(id,new_rot[0],new_rot[1],new_rot[2]))
 
   ## Camera Accessor Methods
