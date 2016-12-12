@@ -1,3 +1,9 @@
+import tensorflow as tf
+sess = tf.Session()
+
+from keras import backend as K
+K.set_session(sess)
+
 from keras.models import Model
 from keras.layers import (
     Input,
@@ -12,22 +18,52 @@ from keras.layers.convolutional import (
     AveragePooling2D
 )
 from keras.layers.normalization import BatchNormalization
-from keras import backend as K
+from keras.applications.resnet50 import ResNet50
 import pdb
 
 #------------------------------------------------------
 
-OUTPUT_DIM = 4
+
 if K.image_dim_ordering() == 'tf':
-    #INPUT_SHAPE = (224, 224, 3)
+    INPUT_SHAPE = (224, 224, 3)
     ROW_AXIS = 1
     COL_AXIS = 2
     CHANNEL_AXIS = 3
 else:
-    #INPUT_SHAPE = (3, 224, 224)
+    INPUT_SHAPE = (3, 224, 224)
     CHANNEL_AXIS = 1
     ROW_AXIS = 2
     COL_AXIS = 3
+
+
+## HELPER FUNCTION TO MAKE THE MODEL FINETUNABLE: ie) remove last layer, 
+def UE_Net(ACTION_SPACE):
+  # remove the last 1000-D Dense layer, add a N-D Dense layer where N is the action space
+  #model = ResNet50(include_top=True, weights='imagenet') 
+
+
+  model = ResNetBuilder.build_resnet_50(INPUT_SHAPE, ACTION_SPACE)
+  """
+  if not model.outputs:
+    raise Exception('Sequential model cannot be popped: model is empty.')
+  model.layers.pop()
+  #model.layers.pop()
+  if not model.layers:
+    model.outputs = []
+    model.inbound_nodes = []
+    model.outbound_nodes = []
+  else:
+    model.layers[-1].outbound_nodes = []
+    model.outputs = [model.layers[-1].output]
+  model.built = False
+  """
+  #pdb.set_trace()
+  #actions = Dense(ACTION_SPACE, activation='softmax', name='actions')(model.layers[-1])
+
+  #model = Model(input=model.layers[0], output=actions)
+
+  model.summary()
+  return model
 
 
 # Helper to build a conv -> BN -> relu block

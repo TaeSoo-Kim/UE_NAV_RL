@@ -1,12 +1,12 @@
 import pdb
 from World import *
 from ExperienceReplay import *
-#from Models import *
+from Models import *
 import numpy as np 
 
 from keras.optimizers import Adam
 from keras.optimizers import sgd
-from keras.applications.resnet50 import ResNet50
+
 from keras.callbacks import ModelCheckpoint
 #from rl.agents.dqn import DQNAgent
 #from rl.policy import BoltzmannQPolicy
@@ -15,6 +15,7 @@ from keras.callbacks import ModelCheckpoint
 
 def train(model,env,exp_replay,epoch,action_space,epsilon,batch_size):
   model_path_out_path = '/home/tk/dev/unrealcv/src/model_weights/'
+  MAX_STEP_COUNT = 200
   for ep in range(0,epoch):
     loss = 0.0
     env.reset()
@@ -24,6 +25,7 @@ def train(model,env,exp_replay,epoch,action_space,epsilon,batch_size):
     frame = env.observe() 
     epoch_reward = 0.0
     current_best_reward = -30000
+    step_count = 0
     while not objective_complete:
       # get state observation
       frame_prev = frame
@@ -39,7 +41,7 @@ def train(model,env,exp_replay,epoch,action_space,epsilon,batch_size):
       # Act
       frame, reward, objective_complete = env.act(action)
       epoch_reward += reward
-      print "Current reward:", epoch_reward
+      print "step: ",step_count, ", action: ", action, ", current reward:", epoch_reward
 
       if objective_complete:
         # book keeping
@@ -55,6 +57,11 @@ def train(model,env,exp_replay,epoch,action_space,epsilon,batch_size):
       # learn
       inputs, targets = exp_replay.get_batch(model, batch_size=batch_size)
       loss += model.train_on_batch(inputs,targets)[0]
+
+      step_count += 1
+      if step_count > MAX_STEP_COUNT:
+        model.save_weights('model_weights/ResNet50_RL_epoch_%d.hdf5'%ep, overwrite=False)
+        break
 
     print "Epoch {%03d}/{%d} | Loss {%.6f} | Win count {}".format(ep, loss, win_count)
 
@@ -74,6 +81,7 @@ if __name__ == "__main__":
   # get model
   #model = ResNetBuilder.build_resnet_50(INPUT_SHAPE, OUTPUT_DIM)
   
+  """
   env = World()
   #exp_replay = None
   exp_replay = ExperienceReplay(max_memory=max_memory)
@@ -83,7 +91,11 @@ if __name__ == "__main__":
   #dqn = DQNAgent(model=model, nb_actions=nb_actions, memory=memory, nb_steps_warmup=10,
                #target_model_update=1e-2, policy=policy)
   #model.compile(Adam(lr=1e-3), metrics=['mae'])
-  model = ResNet50(include_top=True, weights='imagenet')
+
+  """
+  
+  print "Building RESNET-50"
+  model = UE_Net(ACTION_SPACE)
   model.compile(Adam(lr=1e-3), 'mae', metrics=['mae'])
 #  pdb.set_trace()
 
