@@ -7,7 +7,7 @@ from math import cos,sin,radians
 import numpy as np
 
 ## globals
-reward = -0.1 # default to -0.1 because every step counts as reward:-0.1
+reward = -0.01 # default to -0.01 because every step counts as penalty:-0.01
 game_over = 0
 
 def reward_listener(message):
@@ -17,9 +17,9 @@ def reward_listener(message):
   
   
   if "COLLISION" in message:
-    reward = -1
+    reward = -1.0
   elif "INSIGHT" in message:
-    reward = 2.0
+    reward = 1.0
   elif "GAME_OVER" in message:
     game_over = 1
     reward = 10.0
@@ -34,8 +34,9 @@ class World(object):
     global reward, game_over
     reward = 0
     game_over = 0
-    client.message_handler = reward_listener
+    
     client.connect()
+    client.message_handler = reward_listener
     if not client.isconnected():
       print 'UnrealCV server is not running. Gaming running?'
       sys.exit()
@@ -77,7 +78,7 @@ class World(object):
     # copy reward, set it back to -0.1, return the copy
 
     return_reward_val = reward
-    reward = -0.1
+    reward = -0.01
     return return_reward_val
 
   
@@ -90,7 +91,7 @@ class World(object):
   ## Actor Manipulation Methods
   def _move_forward(self,id=0):
     ## This moves the camera forward by a fixed step size
-    step_size = 75
+    step_size = 50
 
     cur_pos = self._get_camera_pos(id)
     cur_rot = self._get_camera_rotation(id)
@@ -98,12 +99,13 @@ class World(object):
 
     noise = np.random.rand() ## random noise  0~1
     new_pos = np.dot(R,np.transpose(np.array((step_size+noise,0,0)))) + np.array(cur_pos)
-    res = client.request('vset /camera/%d/location %f %f %f'%(id,new_pos[0],new_pos[1],new_pos[2]))
+    #res = client.request('vset /camera/%d/location %f %f %f'%(id,new_pos[0],new_pos[1],new_pos[2]))
+    res = client.request('vset /camera/%d/moveto %f %f %f'%(id,new_pos[0],new_pos[1],new_pos[2]))
     return True
 
   def _move_backward(self,id=0):
     ## This moves the camera forward by a fixed step size
-    step_size = -75
+    step_size = -50
 
     cur_pos = self._get_camera_pos(id)
     cur_rot = self._get_camera_rotation(id)

@@ -1,5 +1,6 @@
 import tensorflow as tf
-sess = tf.Session()
+gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5) #only use 50% of the GPU
+sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 
 from keras import backend as K
 K.set_session(sess)
@@ -41,8 +42,8 @@ def UE_Net(ACTION_SPACE):
   # remove the last 1000-D Dense layer, add a N-D Dense layer where N is the action space
   #model = ResNet50(include_top=True, weights='imagenet') 
 
-
-  model = ResNetBuilder.build_resnet_50(INPUT_SHAPE, ACTION_SPACE)
+  model = ResNetBuilder.build_resnet_18(INPUT_SHAPE, ACTION_SPACE)
+  #model = ResNetBuilder.build_resnet_50(INPUT_SHAPE, ACTION_SPACE)
   """
   if not model.outputs:
     raise Exception('Sequential model cannot be popped: model is empty.')
@@ -178,7 +179,10 @@ class ResNetBuilder(object):
                                             block._keras_shape[COL_AXIS]),
                                  strides=(1, 1))(block)
         flatten1 = Flatten()(pool2)
-        dense = Dense(output_dim=num_outputs, init="he_normal", activation="softmax")(flatten1)
+
+        ## ADDED THESE LAYERs as RL-task learning layer ################################
+        dense_RL = Dense(output_dim=512, init="he_normal")(flatten1)
+        dense = Dense(output_dim=num_outputs, init="he_normal", activation="softmax")(dense_RL)
 
         model = Model(input=input, output=dense)
         return model
